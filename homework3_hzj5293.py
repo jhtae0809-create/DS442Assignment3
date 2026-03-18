@@ -11,6 +11,7 @@ student_name = "Hyuntae Jeong"
 # Include your imports here, if any are used.
 import random
 from collections import deque
+import copy
 
 ############################################################
 # Section 1: Dominoes Game
@@ -156,12 +157,13 @@ class Sudoku(object):
     def remove_inconsistent_values(self, cell1, cell2):
         removed = False
         if (cell1, cell2) in self.ARCS:
-            val = list(self.__board[cell2])[0]
-            if len(self.__board[cell2]) == 1 and val in self.__board[cell1]:
-                removed=True
-                tmp = self.__board[cell1]
-                tmp.remove(val)
-                self.__board[cell1] = tmp
+            if len(self.__board[cell2]) == 1:
+                val = next(iter(self.__board[cell2]))
+                if len(self.__board[cell2]) == 1 and val in self.__board[cell1]:
+                    removed=True
+                    tmp = self.__board[cell1]
+                    tmp.remove(val)
+                    self.__board[cell1] = tmp
         return removed
     
     def get_neighbors(self, cell):
@@ -182,62 +184,87 @@ class Sudoku(object):
         while arcQ:
             cell1, cell2 = arcQ.popleft()
             if self.remove_inconsistent_values(cell1, cell2):
+                if len(self.__board[cell1]) == 0:
+                    return False
                 newarc = self.get_neighbors(cell1)
                 for i in newarc:
                     if i != cell2 and not i in arcQ:
                         arcQ.append((cell1, i))
+        return True
             
 
 
     def infer_improved(self):
         while True:
             board_changed = False
-            self.infer_ac3()
-            for n in range(1,10):
-                for i in range(9):
-                    cnt = 0
-                    idx = (-1, -1)
-                    for j in range(9):
-                        if n in self.__board[(i,j)]:
-                            cnt += 1
-                            idx = (i, j)
-                    if cnt == 1:
-                        self.__board[idx]=set([n])
-                        board_changed = True
-                    cnt = 0
-                    idx = (-1, -1)
-                    for j in range(9):
-                        if n in self.__board[(j,i)]:
-                            cnt += 1
-                            idx = (j, i)
-                    if cnt == 1:
-                        self.__board[idx]=set([n])
-                        board_changed = True
-                for i in range(3):
-                    for j in range(3):
+            if self.infer_ac3():
+                for n in range(1,10):
+                    for i in range(9):
                         cnt = 0
                         idx = (-1, -1)
-                        for ii in range(i*3, i*3+3):
-                            for jj in range(j*3, j*3+3):
-                                if n in self.__board[(ii,jj)]:
-                                    cnt += 1
-                                    idx = (ii, jj)
-                        if cnt == 1:
+                        for j in range(9):
+                            if n in self.__board[(i,j)]:
+                                cnt += 1
+                                idx = (i, j)
+                        if cnt == 1 and len(self.__board[idx])>1:
                             self.__board[idx]=set([n])
                             board_changed = True
+                        cnt = 0
+                        idx = (-1, -1)
+                        for j in range(9):
+                            if n in self.__board[(j,i)]:
+                                cnt += 1
+                                idx = (j, i)
+                        if cnt == 1 and len(self.__board[idx])>1:
+                            self.__board[idx]=set([n])
+                            board_changed = True
+                    for i in range(3):
+                        for j in range(3):
+                            cnt = 0
+                            idx = (-1, -1)
+                            for ii in range(i*3, i*3+3):
+                                for jj in range(j*3, j*3+3):
+                                    if n in self.__board[(ii,jj)]:
+                                        cnt += 1
+                                        idx = (ii, jj)
+                            if cnt == 1 and len(self.__board[idx])>1:
+                                self.__board[idx]=set([n])
+                                board_changed = True
             if not board_changed:
                 break
-                
-                
-                    
+    
+    def solved(self):
+        for cell in self.CELLS:
+            if len(self.__board[cell]) !=1:
+                return False
+        return True
 
-                
-            
-
+    def unsolvable(self):
+        for cell in self.CELLS:
+            if len(self.__board[cell]) == 0:
+                return True
+        return False
+    
     def infer_with_guessing(self):
-        pass
+        self.infer_improved()
+        if self.solved():
+            return True
+        if self.unsolvable():
+            return False
+        #guess = None
+        for cell in self.CELLS:
+            if len(self.__board[cell])>1:
+                guess = cell
+                cand = self.__board[guess]
+                for i in cand:
+                    backup = copy.deepcopy(self.__board)
+                    self.__board[guess] = {i}
+                    if self.infer_with_guessing():
+                        return True
+                    self.__board = backup
 
-sudoku = Sudoku(read_board("sudoku/sudoku/hw3-medium2.txt"))
+
+sudoku = Sudoku(read_board("sudoku/sudoku/hw3-hard1.txt"))
 # print(sudoku.get_values((0,3)))
 # print(sudoku.get_values((0,0)))
 # print(sudoku.get_values((0,1)))
@@ -246,6 +273,6 @@ sudoku = Sudoku(read_board("sudoku/sudoku/hw3-medium2.txt"))
 # for col in [0, 1, 4]:
 #     removed = sudoku.remove_inconsistent_values((0,3), (0,col))
 #     print(removed, sudoku.get_values((0,3)))
-sudoku.infer_improved()
+sudoku.infer_with_guessing()
 
 print(sudoku.get_board())
