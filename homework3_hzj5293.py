@@ -49,7 +49,7 @@ class DominoesGame(object):
     def legal_moves(self, vertical):
         for i in range(self.__m):
             for j in range(self.__n):
-                if self.is_legal_move(self, i, j, vertical):
+                if self.is_legal_move(i, j, vertical):
                     yield (i,j)
 
     def execute_move(self, row, col, vertical):
@@ -64,33 +64,69 @@ class DominoesGame(object):
         return len(self.legal_moves(vertical)) == 0
 
     def copy(self):
-        return DominoesGame(self.__board)
+        return DominoesGame(copy.deepcopy(self.__board))
 
     def successors(self, vertical):
         for i, j in self.legal_moves(vertical):
-            yield (i, j), self.copy().execute_move(i,j, vertical)
+            new = self.copy()
+            new.execute_move(i,j,vertical)
+            yield (i, j), new
 
     def get_random_move(self, vertical):
         return random.choice(self.legal_moves(vertical))
-
+    
+    def score(self, vertical):
+        return len(list(self.legal_moves(vertical))) - len(list(self.legal_moves(not vertical)))
     # Required
     def get_best_move(self, limit, vertical):
-        self.leaf_count = 0
-        score, move = self.helper(limit, vertical, -self.inf, self.inf, 0)
-        return score, move, self.leaf_count
+        move, score, leaf = self.helper(limit, vertical, True, 0, -self.inf, self.inf)
+        return move, score, leaf
 
 
-    def helper(self, limit, vertical, alpha, beta, curr):
-        
-        for move, b in self.successors(vertical):
-            if limit != 0:
-                new_result = (move, b.legal_moves(vertical)-b.legal_moves(not vertical), n_leaf)
-                new_alpha = alpha
-                if new_alpha < new_result[1]:
-                    new_alpha = new_result[1]
-                if b.legal_moves(vertical) - b.legal_moves(not vertical) > result[1]:
-                    result = new_result
+    def helper(self, limit, vertical, plr, curr, alpha, beta):
+        if curr == limit:
+            return None, self.score(vertical), 1
+        if plr:
+            result_move = None
+            result_score = -self.inf
+            leaves = 0
+            succ = list(self.successors(vertical))
+            if len(succ) == 0:
+                return None, self.score(vertical), 1
+            for move, b in succ:
+                if limit != 0:
+                    new_move, new_score, new_leaves = b.helper(limit, vertical, not plr, curr+1, alpha, beta)
+                    leaves += new_leaves
+                    if new_score > result_score:
+                        result_move, result_score = (move, new_score)
+                    alpha = max(alpha, new_score)
+                    if beta <= alpha:
+                        break
+            return result_move, result_score, leaves
+        else:
+            result_move = None
+            result_score = self.inf
+            leaves = 0
+            succ = list(self.successors(not vertical))
+            if len(list(succ)) == 0:
+                return None, self.score(vertical), 1
+            for move, b in succ:
+                if limit != 0:
+                    new_move, new_score, new_leaves = b.helper(limit, vertical, not plr, curr+1, alpha, beta)
+                    leaves += new_leaves
+                    if new_score < result_score:
+                        result_move, result_score = (move, new_score)
+                    beta = min(beta, new_score)
+                    if beta <= alpha:
+                        break
+            return result_move, result_score, leaves
 
+
+# b = [[False]*3 for i in range(3)]
+# g = DominoesGame(b)
+# g.execute_move(0,1,True)
+# print(g.get_best_move(1, False))
+# print(g.get_best_move(2, False))
 
 
 ############################################################
@@ -264,15 +300,15 @@ class Sudoku(object):
                     self.__board = backup
 
 
-sudoku = Sudoku(read_board("sudoku/sudoku/hw3-hard1.txt"))
-# print(sudoku.get_values((0,3)))
-# print(sudoku.get_values((0,0)))
-# print(sudoku.get_values((0,1)))
-# print(sudoku.get_values((0,4)))
+# sudoku = Sudoku(read_board("sudoku/sudoku/hw3-hard1.txt"))
+# # print(sudoku.get_values((0,3)))
+# # print(sudoku.get_values((0,0)))
+# # print(sudoku.get_values((0,1)))
+# # print(sudoku.get_values((0,4)))
 
-# for col in [0, 1, 4]:
-#     removed = sudoku.remove_inconsistent_values((0,3), (0,col))
-#     print(removed, sudoku.get_values((0,3)))
-sudoku.infer_with_guessing()
+# # for col in [0, 1, 4]:
+# #     removed = sudoku.remove_inconsistent_values((0,3), (0,col))
+# #     print(removed, sudoku.get_values((0,3)))
+# sudoku.infer_with_guessing()
 
-print(sudoku.get_board())
+# print(sudoku.get_board())
