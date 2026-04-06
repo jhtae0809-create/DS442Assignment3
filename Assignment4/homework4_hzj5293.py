@@ -2,10 +2,15 @@
 # CMPSC/DS 442: Homework 4 
 ############################################################
 
-student_name = "Type your full name here."
+student_name = "Hyuntae Jeong"
 
 ############################################################
 # Imports
+import email
+import collections
+import math
+import os
+
 ############################################################
 
 # Include your imports here, if any are used.
@@ -15,7 +20,19 @@ student_name = "Type your full name here."
 ############################################################
 
 def load_tokens(email_path):
-    pass
+    with open(email_path, 'r', encoding = "utf-8") as f:
+        msg = email.message_from_file(f)
+    tks = []
+    for l in email.iterators.body_line_iterator(msg):
+        tks.extend(l.split())
+    return tks
+
+ham_dir = "/workspaces/DS442/Assignment4/homework4_data/train/ham/"
+print(load_tokens(ham_dir+"ham1")[200:204])
+print(load_tokens(ham_dir+"ham2")[110:114])
+spam_dir = "/workspaces/DS442/Assignment4/homework4_data/train/spam/"
+print(load_tokens(spam_dir+"spam1")[1:5])
+print(load_tokens(spam_dir+"spam2")[:4])
 
 def log_probs(email_paths, smoothing):
     pass
@@ -23,11 +40,11 @@ def log_probs(email_paths, smoothing):
 class SpamFilter(object):
 
     def __init__(self, spam_dir, ham_dir, smoothing):        
-        self.spam_log_probs = 
-        self.ham_log_probs = 
+        self.spam_log_probs = None
+        self.ham_log_probs = None
 
-        self.p_spam = 
-        self.p_ham = 
+        self.p_spam = None
+        self.p_ham = None
 
         pass
     
@@ -51,9 +68,9 @@ def load_corpus(path):
 class Tagger(object):
 
     def __init__(self, sentences):
-        self.pi = 
-        self.a = 
-        self.b =  
+        self.pi = None
+        self.a = None
+        self.b =  None
 
         pass
 
