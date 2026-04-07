@@ -27,22 +27,40 @@ def load_tokens(email_path):
         tks.extend(l.split())
     return tks
 
-ham_dir = "/workspaces/DS442/Assignment4/homework4_data/train/ham/"
-print(load_tokens(ham_dir+"ham1")[200:204])
-print(load_tokens(ham_dir+"ham2")[110:114])
-spam_dir = "/workspaces/DS442/Assignment4/homework4_data/train/spam/"
-print(load_tokens(spam_dir+"spam1")[1:5])
-print(load_tokens(spam_dir+"spam2")[:4])
+# ham_dir = "/workspaces/DS442/Assignment4/homework4_data/train/ham/"
+# print(load_tokens(ham_dir+"ham1")[200:204])
+# print(load_tokens(ham_dir+"ham2")[110:114])
+# spam_dir = "/workspaces/DS442/Assignment4/homework4_data/train/spam/"
+# print(load_tokens(spam_dir+"spam1")[1:5])
+# print(load_tokens(spam_dir+"spam2")[:4])
 
 def log_probs(email_paths, smoothing):
-    pass
+    allt = []
+    for path in email_paths:
+        tokens = load_tokens(path)
+        allt+=tokens
+    word_counts = collections.Counter(allt)
+    wtotal=sum(word_counts.values())
+    vsize=len(word_counts)
+    denom = wtotal + smoothing * (vsize+1)
+    log_prob={}
+    for k, v in word_counts.items():
+        log_prob[k] = math.log((v+smoothing)/denom)
+    log_prob["<UNK>"] = math.log(smoothing/denom)
+    return log_prob
+
+paths = ["/workspaces/DS442/Assignment4/homework4_data/train/ham/ham%d"%i for i in range(1,11)]
+p = log_probs(paths, 1e-5)
+print(p["the"], p["line"])
+paths = ["/workspaces/DS442/Assignment4/homework4_data/train/spam/spam%d"%i for i in range(1,11)]
+p = log_probs(paths, 1e-5)
+print(p["Credit"], p["<UNK>"])
 
 class SpamFilter(object):
 
     def __init__(self, spam_dir, ham_dir, smoothing):        
         self.spam_log_probs = None
         self.ham_log_probs = None
-
         self.p_spam = None
         self.p_ham = None
 
