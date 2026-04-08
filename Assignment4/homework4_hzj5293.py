@@ -138,19 +138,123 @@ class SpamFilter(object):
 
 def load_corpus(path):
     with open(path, 'r', encoding = "utf-8") as f:
+        res =[]
+        for line in f.readlines():
+            tkline = line.strip().split()
+            res.append([tuple(tk.rsplit("=",1)) for tk in tkline])
+    return res
+
+# c = load_corpus("/workspaces/DS442/Assignment4/brown_corpus.txt")
+# print(c[1799])
 
 class Tagger(object):
 
     def __init__(self, sentences):
-        self.pi = None
-        self.a = None
-        self.b =  None
+        tagcounts = collections.defaultdict(int)
+        starttag = collections.defaultdict(int)
+        transition = collections.defaultdict(lambda: collections.defaultdict(int))
+        emission = collections.defaultdict(lambda: collections.defaultdict(int))
+        vocab=set()
+        tags=set()
+        num_sc = len(sentences)
+        for sc in sentences:
+            if not sc:
+                continue
+            first_tag=sc[0][1]
+            starttag[first_tag] +=1
+            for i in range(len(sc)):
+                tk, tag=sc[i]
+                tagcounts[tag]+=1
+                vocab.add(tk)
+                tags.add(tag)
+                emission[tag][tk]+=1
+                if i < len(sc)-1:
+                    nexttag=sc[i+1][1]
+                    transition[tag][nexttag]+=1
+        a = 1e-5
+        ntags = len(tags)
+        nvocab = len(vocab)
 
-        pass
+        self.pi = {}
+        self.a = {}
+        self.b =  {}
+
+        for tag in tags:
+            self.pi[tag] = (starttag[tag]+a)/(num_sc + a*ntags)
+
+        for i in tags:
+            self.a[i]={}
+            self.b[i]={}
+            emiss_denom = tagcounts[i]
+            unk_prob = a / (emiss_denom + a * (nvocab + 1))
+            self.b[i]["<UNK>"] = unk_prob
+            trans_denom = sum(transition[i].values())
+            for j in tags:
+                self.a[i][j] = (transition[i][j] + a) / (trans_denom + a * ntags)
+            for w, count in emission[i].items():
+                self.b[i][w] = (count+a)/(emiss_denom + a *(nvocab+1))
+
+        
 
     def most_probable_tags(self, tokens):
-        pass
+        resulttags=[]
+        for tk in tokens:
+            besttag = None
+            max_p = -100
+            for t in self.b.keys():
+                p = self.b[t].get(tk,self.b[t]["<UNK>"])
+                if p>max_p:
+                    max_p=p
+                    besttag=t
+            resulttags.append(besttag)
+        return resulttags
+
 
     def viterbi_tags(self, tokens):
-        pass
+        if not tokens:
+            return []
+        n = len(tokens)
+        tags = list(self.pi.keys())
+        B = [{} for _ in range(n)]
+        V = [{} for _ in range(n)]
+        w0 = tokens[0]
+        for t in tags:
+            ppi = self.pi[t]
+            pb = self.b[t].get(w0, self.b[t]["<UNK>"])
+            B[0][t]=None
+            V[0][t]=math.log(ppi) + math.log(pb)
+        for i in range(1,n):
+            wi = tokens[i]
+            for curr in tags:
+                maxp = -10*100
+                bestpt = None
+                pb = self.b[curr].get(wi, self.b[curr]["<UNK>"])
+                logb=math.log(pb)
+                for prev in tags:
+                    pa = self.a[prev][curr]
+                    path_prob = V[i-1][prev] + math.log(pa)+logb
+                    if path_prob > maxp:
+                        maxp = path_prob
+                        bestpt=prev
+                V[i][curr] = maxp
+                B[i][curr] = bestpt
+        bestlasttag = max(V[n-1].keys(), key=lambda x:V[n-1][x])
+        best_path = [bestlasttag]
+        currp = bestlasttag
+        for t in range(n-1, 0, -1):
+            currp = B[t][currp]
+            best_path.append(currp)
+        return best_path[::-1]
+                
+        
+        
 
+
+# c = load_corpus("/workspaces/DS442/Assignment4/brown_corpus.txt")
+# t = Tagger(c)
+# print(t.most_probable_tags(["The", "man", "walks", "."]))
+# print(t.most_probable_tags(["The", "blue", "bird", "sings"]))
+# #s="I am waiting to reply".split()
+# s="I saw the play".split()
+# print(t.most_probable_tags(s))
+# print(t.viterbi_tags(s))
